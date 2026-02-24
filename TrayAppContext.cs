@@ -112,24 +112,25 @@ namespace TaskbarMediaControls
                 icon.Dispose();
             }
         }
-
         private void SetStartup(bool enable)
         {
             try
             {
-                using var key = Registry.CurrentUser.OpenSubKey(RegistryRunKey, writable: true);
+                using var key = Registry.CurrentUser.CreateSubKey(RegistryRunKey);
                 if (key != null)
                 {
-                    string exePath = Assembly.GetExecutingAssembly().Location;
+                    string exePath = $"\"{Assembly.GetExecutingAssembly().Location}\"";
                     if (enable)
                         key.SetValue(AppName, exePath);
-                    else if (key.GetValue(AppName) != null)
-                        key.DeleteValue(AppName);
+                    else
+                        key.DeleteValue(AppName, false);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to update startup setting: {ex.Message}");
+            }
         }
-
         private bool IsStartupEnabled()
         {
             try
@@ -137,14 +138,22 @@ namespace TaskbarMediaControls
                 using var key = Registry.CurrentUser.OpenSubKey(RegistryRunKey);
                 if (key != null)
                 {
+                    var value = key.GetValue(AppName)?.ToString();
+                    if (string.IsNullOrWhiteSpace(value))
+                        return false;
+
                     string exePath = Assembly.GetExecutingAssembly().Location;
-                    return key.GetValue(AppName)?.ToString() == exePath;
+
+                    // Remove quotes for comparison
+                    value = value.Trim('"');
+                    exePath = exePath.Trim('"');
+
+                    return string.Equals(value, exePath, StringComparison.OrdinalIgnoreCase);
                 }
             }
             catch { }
-            return true;
+            return false;
         }
-
         [DllImport("user32.dll")]
         private static extern void keybd_event(byte bVk, byte bScan, int dwFlags, int dwExtraInfo);
 
