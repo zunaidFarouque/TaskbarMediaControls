@@ -17,7 +17,7 @@ I originally got the idea from a GitHub repository that I can no longer find, bu
 - Additional features may be added if there’s enough interest from users.  
 
 ### Installation
-1. Download Installer
+1. [Download the latest installer](https://github.com/2latemc/TaskbarMediaControls/releases/latest)
 2. Run the app once
 3. Drag and Drop the Tray Icons from the "show more" menu if collapsed
 <img width="255" height="157" alt="taskbar" src="https://github.com/user-attachments/assets/3cf2f980-81c3-4093-9be5-dd99d55e6d4a" />
