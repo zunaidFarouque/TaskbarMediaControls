@@ -8,4 +8,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Remove="Resources\stop.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\prev.ico" />
+    <EmbeddedResource Include="Resources\pause.ico" />
+    <EmbeddedResource Include="Resources\play.ico" />
+    <EmbeddedResource Include="Resources\next.ico" />
+    <EmbeddedResource Include="Resources\stop.ico" />
+  </ItemGroup>
+
 </Project>
