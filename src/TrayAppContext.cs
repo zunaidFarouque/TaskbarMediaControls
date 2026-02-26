@@ -42,7 +42,8 @@ namespace TaskbarMediaControls {
         }
 
         public TrayAppContext() {
-            _launchOnStartup = IsStartupEnabled();
+            _launchOnStartup = !StartupEntryExists() || IsStartupEnabled();
+            
 
             _trayMenu = BuildContextMenu();
 
@@ -159,6 +160,12 @@ namespace TaskbarMediaControls {
             _trayIcons[1].Icon = IconManager.LoadIcon(_isPlaying ? IconType.Pause : IconType.Play);
             _trayIcons[2].Icon = IconManager.LoadIcon(IconType.Next);
         }
-     
+        private bool StartupEntryExists() {
+            try {
+                using var runKey = Registry.CurrentUser.OpenSubKey(RegistryRunKey);
+                return runKey?.GetValue(AppName) != null;
+            }
+            catch { return false; }
+        }
     }
 }
