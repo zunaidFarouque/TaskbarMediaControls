@@ -13,7 +13,7 @@ I originally got the idea from a GitHub repository that I can no longer find, bu
 - Lightweight and always-on-top tray presence  
 
 ### Limitations
-- **Light mode** may not display correctly, as I did not bother creating new icons for it
+- ~~**Light mode** may not display correctly, as I did not bother creating new icons for it~~
 - Additional features may be added if there’s enough interest from users.  
 
 ### Installation
