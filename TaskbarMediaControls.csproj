@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="Resources\back.ico" />
     <EmbeddedResource Include="Resources\pause.ico" />
     <EmbeddedResource Include="Resources\play.ico" />

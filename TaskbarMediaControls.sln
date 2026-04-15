@@ -5,6 +5,10 @@ VisualStudioVersion = 17.14.36930.0 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskbarMediaControls", "TaskbarMediaControls.csproj", "{DEEC8C86-7C00-42EB-B7DC-0A87B314810B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{4E536A23-5D45-457B-A3E2-72FC17367B11}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskbarMediaControls.Tests", "tests\TaskbarMediaControls.Tests\TaskbarMediaControls.Tests.csproj", "{A3FC3EBA-B003-449E-A522-DEF1F5E83D57}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,11 +19,18 @@ Global
 		{DEEC8C86-7C00-42EB-B7DC-0A87B314810B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DEEC8C86-7C00-42EB-B7DC-0A87B314810B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DEEC8C86-7C00-42EB-B7DC-0A87B314810B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3FC3EBA-B003-449E-A522-DEF1F5E83D57}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3FC3EBA-B003-449E-A522-DEF1F5E83D57}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3FC3EBA-B003-449E-A522-DEF1F5E83D57}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3FC3EBA-B003-449E-A522-DEF1F5E83D57}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {6CF7A1A6-1BAB-432F-AAE4-B6217F419321}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A3FC3EBA-B003-449E-A522-DEF1F5E83D57} = {4E536A23-5D45-457B-A3E2-72FC17367B11}
 	EndGlobalSection
 EndGlobal

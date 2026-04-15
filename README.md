@@ -24,3 +24,9 @@ I originally got the idea from a GitHub repository that I can no longer find, bu
 <img width="255" height="157" alt="taskbar" src="https://github.com/user-attachments/assets/3cf2f980-81c3-4093-9be5-dd99d55e6d4a" />
 
 6. Use the tray menu to enable/disable launch on startup or exit the app.  
+
+### Development
+
+For local setup, architecture, AI collaboration workflow, and testing guidance, see:
+
+- [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md)
