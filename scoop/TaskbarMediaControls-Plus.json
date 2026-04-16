@@ -6,7 +6,7 @@
   "architecture": {
     "64bit": {
       "url": "https://github.com/zunaidFarouque/TaskbarMediaControls-Plus/releases/download/v1.0.0/TaskbarMediaControls-Plus-v1.0.0-portable.zip",
-      "hash": "281e9234ffe42668dd9ed28a65a2a269acd23eff81b1369229be674074a1f760"
+      "hash": "7ab2ec7f8be2e3d4253f8644a074406a1d23180029f56eb6f890edbc57d4daa9"
     }
   },
   "depends": "dotnet-runtime",
