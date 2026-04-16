@@ -179,6 +179,21 @@ public class TrayFeatureLogicTests {
     }
 
     [Fact]
+    public void ResolveLaunchPlayerType_ShouldTreatFoobarExeAsFoobar_EvenWhenFallbackTypeIsOther() {
+        var settings = new AppSettings {
+            FallbackPlayerType = FallbackPlayerType.Other
+        };
+
+        var playerType = TrayFeatureLogic.ResolveLaunchPlayerType(
+            settings,
+            @"C:\Players\foobar2000.exe",
+            matchesConfiguredFallbackPath: false
+        );
+
+        Assert.Equal(FallbackPlayerType.Foobar, playerType);
+    }
+
+    [Fact]
     public void ShouldAvoidDuplicateWhenRunningWithoutWindow_ShouldBeTrueForFoobarExe() {
         var settings = new AppSettings {
             FallbackPlayerType = FallbackPlayerType.Foobar
@@ -187,6 +202,21 @@ public class TrayFeatureLogicTests {
         var avoidDuplicate = TrayFeatureLogic.ShouldAvoidDuplicateWhenRunningWithoutWindow(
             settings,
             @"D:\OtherPath\foobar2000.exe",
+            matchesConfiguredFallbackPath: false
+        );
+
+        Assert.True(avoidDuplicate);
+    }
+
+    [Fact]
+    public void ShouldAvoidDuplicateWhenRunningWithoutWindow_ShouldBeTrueForFoobarExe_EvenWhenFallbackTypeIsOther() {
+        var settings = new AppSettings {
+            FallbackPlayerType = FallbackPlayerType.Other
+        };
+
+        var avoidDuplicate = TrayFeatureLogic.ShouldAvoidDuplicateWhenRunningWithoutWindow(
+            settings,
+            @"C:\Players\foobar2000.exe",
             matchesConfiguredFallbackPath: false
         );
 

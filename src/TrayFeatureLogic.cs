@@ -113,8 +113,7 @@ public static class TrayFeatureLogic {
             return settings.FallbackPlayerType;
         }
 
-        if (settings.FallbackPlayerType == FallbackPlayerType.Foobar &&
-            IsFoobarExecutablePath(launchPath)) {
+        if (IsFoobarExecutablePath(launchPath)) {
             return FallbackPlayerType.Foobar;
         }
 
@@ -130,8 +129,7 @@ public static class TrayFeatureLogic {
             return true;
         }
 
-        return settings.FallbackPlayerType == FallbackPlayerType.Foobar &&
-               IsFoobarExecutablePath(launchPath);
+        return IsFoobarExecutablePath(launchPath);
     }
 
     public static bool IsFoobarExecutablePath(string? path) {
