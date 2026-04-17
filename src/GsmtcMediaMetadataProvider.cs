@@ -39,13 +39,15 @@ public sealed class GsmtcMediaMetadataProvider : IMediaMetadataProvider {
             var sourceId = _currentSession.SourceAppUserModelId;
             var sourceApp = BuildSourceAppLabel(sourceId);
             var processPath = ResolveProcessPath(sourceId);
+            var playbackState = MapPlaybackState(_currentSession.GetPlaybackInfo()?.PlaybackStatus);
 
             return new MediaSessionInfo {
                 HasActiveSession = true,
                 Title = title,
                 Artist = artist,
                 SourceApp = sourceApp,
-                SourceProcessPath = processPath
+                SourceProcessPath = processPath,
+                PlaybackState = playbackState
             };
         }
         catch {
@@ -87,6 +89,15 @@ public sealed class GsmtcMediaMetadataProvider : IMediaMetadataProvider {
 
     private void Publish(MediaSessionInfo info) {
         MediaInfoChanged?.Invoke(info);
+    }
+
+    private static MediaPlaybackState MapPlaybackState(GlobalSystemMediaTransportControlsSessionPlaybackStatus? status) {
+        return status switch {
+            GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing => MediaPlaybackState.Playing,
+            GlobalSystemMediaTransportControlsSessionPlaybackStatus.Paused => MediaPlaybackState.Paused,
+            GlobalSystemMediaTransportControlsSessionPlaybackStatus.Stopped => MediaPlaybackState.Stopped,
+            _ => MediaPlaybackState.Unknown
+        };
     }
 
     private static string BuildSourceAppLabel(string? sourceAppUserModelId) {

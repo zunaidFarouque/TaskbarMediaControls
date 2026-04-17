@@ -75,6 +75,34 @@ public class TrayFeatureLogicTests {
         Assert.Equal("Play / Pause", text);
     }
 
+    [Theory]
+    [InlineData(MediaPlaybackState.Playing, IconType.Pause)]
+    [InlineData(MediaPlaybackState.Paused, IconType.Play)]
+    [InlineData(MediaPlaybackState.Stopped, IconType.Play)]
+    [InlineData(MediaPlaybackState.Unknown, IconType.Play)]
+    public void ResolvePlayPauseIconType_ShouldMapPlaybackState(MediaPlaybackState playbackState, IconType expectedIconType) {
+        var info = new MediaSessionInfo {
+            HasActiveSession = true,
+            PlaybackState = playbackState
+        };
+
+        var iconType = TrayFeatureLogic.ResolvePlayPauseIconType(info);
+
+        Assert.Equal(expectedIconType, iconType);
+    }
+
+    [Fact]
+    public void ResolvePlayPauseIconType_ShouldUsePlayIconWhenNoSession() {
+        var info = new MediaSessionInfo {
+            HasActiveSession = false,
+            PlaybackState = MediaPlaybackState.Playing
+        };
+
+        var iconType = TrayFeatureLogic.ResolvePlayPauseIconType(info);
+
+        Assert.Equal(IconType.Play, iconType);
+    }
+
     [Fact]
     public void TrimTooltip_ShouldRespectLimit() {
         var longText = new string('x', 70);

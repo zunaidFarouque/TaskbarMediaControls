@@ -8,7 +8,8 @@ public class MediaSessionServiceTests {
                 HasActiveSession = true,
                 Title = "Track",
                 Artist = "Artist",
-                SourceApp = "Player"
+                SourceApp = "Player",
+                PlaybackState = MediaPlaybackState.Playing
             }
         };
         var service = new MediaSessionService(provider);
@@ -20,6 +21,7 @@ public class MediaSessionServiceTests {
         Assert.NotNull(published);
         Assert.True(published!.HasActiveSession);
         Assert.Equal("Track", published.Title);
+        Assert.Equal(MediaPlaybackState.Playing, published.PlaybackState);
     }
 
     [Fact]
@@ -29,7 +31,8 @@ public class MediaSessionServiceTests {
                 HasActiveSession = true,
                 Title = "Refreshed",
                 Artist = "A",
-                SourceApp = "B"
+                SourceApp = "B",
+                PlaybackState = MediaPlaybackState.Paused
             }
         };
         var service = new MediaSessionService(provider);
@@ -41,6 +44,7 @@ public class MediaSessionServiceTests {
         Assert.NotEmpty(published);
         Assert.True(published[^1].HasActiveSession);
         Assert.Equal("Refreshed", published[^1].Title);
+        Assert.Equal(MediaPlaybackState.Paused, published[^1].PlaybackState);
     }
 
     [Fact]

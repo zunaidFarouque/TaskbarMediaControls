@@ -5,6 +5,7 @@ namespace TaskbarMediaControls;
 
 public class TrayAppContext : ApplicationContext {
     private readonly NotifyIcon[] _trayIcons = new NotifyIcon[3];
+    private readonly System.Windows.Forms.Timer[] _iconFeedbackTimers = new System.Windows.Forms.Timer[3];
     private readonly IAppSettingsStore _settingsStore;
     private readonly IMediaSessionService _mediaSessionService;
     private readonly IClipboardService _clipboardService;
@@ -81,11 +82,18 @@ public class TrayAppContext : ApplicationContext {
             ExecuteClickAction(GetSingleClickAction(index));
         };
 
+        _iconFeedbackTimers[index] = new System.Windows.Forms.Timer { Interval = 110 };
+        _iconFeedbackTimers[index].Tick += (_, _) => {
+            _iconFeedbackTimers[index].Stop();
+            RestoreIconFromFeedback(index);
+        };
+
         icon.MouseClick += (_, e) => {
             if (e.Button != MouseButtons.Left) {
                 return;
             }
 
+            ShowPressedFeedback(index);
             _singleClickTimers[index].Stop();
             _singleClickTimers[index].Start();
         };
@@ -110,6 +118,7 @@ public class TrayAppContext : ApplicationContext {
     private void OnMediaInfoChanged(MediaSessionInfo info) {
         if (_uiContext == null) {
             _currentMediaInfo = info;
+            UpdatePlayPauseIconForCurrentState();
             UpdateMediaMenuItems();
             ApplyTooltips();
             return;
@@ -117,6 +126,7 @@ public class TrayAppContext : ApplicationContext {
 
         _uiContext.Post(_ => {
             _currentMediaInfo = info;
+            UpdatePlayPauseIconForCurrentState();
             UpdateMediaMenuItems();
             ApplyTooltips();
         }, null);
@@ -178,6 +188,12 @@ public class TrayAppContext : ApplicationContext {
         }
 
         foreach (var timer in _singleClickTimers) {
+            timer?.Stop();
+            timer?.Dispose();
+        }
+
+        foreach (var timer in _iconFeedbackTimers) {
+            timer?.Stop();
             timer?.Dispose();
         }
 
@@ -409,10 +425,69 @@ public class TrayAppContext : ApplicationContext {
     }
 
     private void RefreshIcons() {
-        _trayIcons[0].Icon = IconManager.LoadIcon(IconType.Previous);
-        _trayIcons[1].Icon = IconManager.LoadIcon(IconType.Play);
-        _trayIcons[2].Icon = IconManager.LoadIcon(IconType.Next);
+        foreach (var timer in _iconFeedbackTimers) {
+            timer?.Stop();
+        }
+
+        for (var index = 0; index < _trayIcons.Length; index++) {
+            ApplyIconByIndex(index, pressed: false);
+        }
+
         ApplyTooltips();
+    }
+
+    private void UpdatePlayPauseIconForCurrentState() {
+        ApplyIconByIndex(1, pressed: false);
+    }
+
+    private void ShowPressedFeedback(int index) {
+        if (index < 0 || index >= _trayIcons.Length) {
+            return;
+        }
+
+        ApplyIconByIndex(index, pressed: true);
+        _iconFeedbackTimers[index].Stop();
+        _iconFeedbackTimers[index].Start();
+    }
+
+    private void RestoreIconFromFeedback(int index) {
+        if (index < 0 || index >= _trayIcons.Length) {
+            return;
+        }
+
+        ApplyIconByIndex(index, pressed: false);
+    }
+
+    private void ApplyIconByIndex(int index, bool pressed) {
+        if (index < 0 || index >= _trayIcons.Length) {
+            return;
+        }
+
+        var notifyIcon = _trayIcons[index];
+        if (notifyIcon == null) {
+            return;
+        }
+
+        var iconType = ResolveIconTypeForIndex(index, pressed);
+        try {
+            notifyIcon.Icon = IconManager.LoadIcon(iconType);
+        }
+        catch (ObjectDisposedException) {
+            // Can happen during shutdown while events/timers are still draining.
+        }
+    }
+
+    private IconType ResolveIconTypeForIndex(int index, bool pressed) {
+        return index switch {
+            0 => pressed ? IconType.PreviousPressed : IconType.Previous,
+            1 => pressed
+                ? (TrayFeatureLogic.ResolvePlayPauseIconType(_currentMediaInfo) == IconType.Pause
+                    ? IconType.PausePressed
+                    : IconType.PlayPressed)
+                : TrayFeatureLogic.ResolvePlayPauseIconType(_currentMediaInfo),
+            2 => pressed ? IconType.NextPressed : IconType.Next,
+            _ => IconType.Play
+        };
     }
 
     private void ApplyTooltips() {

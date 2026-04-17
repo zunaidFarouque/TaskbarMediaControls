@@ -45,6 +45,14 @@ public static class TrayFeatureLogic {
         return $"{actionText} | {info.Title} - {info.Artist} ({info.SourceApp})";
     }
 
+    public static IconType ResolvePlayPauseIconType(MediaSessionInfo info) {
+        if (!info.HasActiveSession) {
+            return IconType.Play;
+        }
+
+        return info.PlaybackState == MediaPlaybackState.Playing ? IconType.Pause : IconType.Play;
+    }
+
     public static string TrimTooltip(string value) {
         return value.Length <= 63 ? value : value[..63];
     }

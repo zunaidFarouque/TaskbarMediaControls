@@ -20,11 +20,19 @@
     <EmbeddedResource Include="Resources\pause.ico" />
     <EmbeddedResource Include="Resources\play.ico" />
     <EmbeddedResource Include="Resources\skip.ico" />
+    <EmbeddedResource Include="Resources\back_pressed.ico" />
+    <EmbeddedResource Include="Resources\pause_pressed.ico" />
+    <EmbeddedResource Include="Resources\play_pressed.ico" />
+    <EmbeddedResource Include="Resources\skip_pressed.ico" />
   
     <EmbeddedResource Include="Resources\back_light.ico" />
     <EmbeddedResource Include="Resources\play_light.ico" />
     <EmbeddedResource Include="Resources\skip_light.ico" />
     <EmbeddedResource Include="Resources\pause_light.ico" />
+    <EmbeddedResource Include="Resources\back_pressed_light.ico" />
+    <EmbeddedResource Include="Resources\play_pressed_light.ico" />
+    <EmbeddedResource Include="Resources\skip_pressed_light.ico" />
+    <EmbeddedResource Include="Resources\pause_pressed_light.ico" />
   </ItemGroup>
 
   <ItemGroup>
