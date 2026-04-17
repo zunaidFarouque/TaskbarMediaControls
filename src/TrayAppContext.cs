@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 namespace TaskbarMediaControls;
@@ -13,6 +14,10 @@ public class TrayAppContext : ApplicationContext {
     private readonly IStartupManager _startupManager;
     private readonly SynchronizationContext? _uiContext;
     private readonly System.Windows.Forms.Timer[] _singleClickTimers = new System.Windows.Forms.Timer[3];
+    private readonly IconType?[] _appliedIconTypes = new IconType?[3];
+#if DEBUG
+    private readonly System.Windows.Forms.Timer _memoryDiagnosticsTimer = new() { Interval = 60_000 };
+#endif
 
     private const int MediaKeyPrevious = 0xB1;
     private const int MediaKeyPlayPause = 0xB3;
@@ -65,6 +70,10 @@ public class TrayAppContext : ApplicationContext {
         SystemEvents.UserPreferenceChanged += SystemEventsOnUserPreferenceChanged;
 
         _mediaSessionService.MediaInfoChanged += OnMediaInfoChanged;
+#if DEBUG
+        _memoryDiagnosticsTimer.Tick += (_, _) => LogResourceUsage();
+        _memoryDiagnosticsTimer.Start();
+#endif
         _ = InitializeMediaAsync();
     }
 
@@ -182,6 +191,11 @@ public class TrayAppContext : ApplicationContext {
     }
 
     private void OnApplicationExit(object? sender, EventArgs e) {
+#if DEBUG
+        _memoryDiagnosticsTimer.Stop();
+        _memoryDiagnosticsTimer.Dispose();
+#endif
+
         foreach (var icon in _trayIcons) {
             icon.Visible = false;
             icon.Dispose();
@@ -200,6 +214,7 @@ public class TrayAppContext : ApplicationContext {
         SystemEvents.UserPreferenceChanged -= SystemEventsOnUserPreferenceChanged;
         _mediaSessionService.MediaInfoChanged -= OnMediaInfoChanged;
         _mediaSessionService.Dispose();
+        IconManager.ResetCache();
     }
 
     private void OpenSettings() {
@@ -425,6 +440,8 @@ public class TrayAppContext : ApplicationContext {
     }
 
     private void RefreshIcons() {
+        IconManager.ResetCache();
+        Array.Fill(_appliedIconTypes, null);
         foreach (var timer in _iconFeedbackTimers) {
             timer?.Stop();
         }
@@ -469,8 +486,15 @@ public class TrayAppContext : ApplicationContext {
         }
 
         var iconType = ResolveIconTypeForIndex(index, pressed);
+        if (_appliedIconTypes[index] == iconType) {
+            return;
+        }
+
         try {
+            var previousIcon = notifyIcon.Icon;
             notifyIcon.Icon = IconManager.LoadIcon(iconType);
+            previousIcon?.Dispose();
+            _appliedIconTypes[index] = iconType;
         }
         catch (ObjectDisposedException) {
             // Can happen during shutdown while events/timers are still draining.
@@ -499,4 +523,20 @@ public class TrayAppContext : ApplicationContext {
         _trayIcons[1].Text = TrayFeatureLogic.TrimTooltip(playPause);
         _trayIcons[2].Text = TrayFeatureLogic.TrimTooltip(next);
     }
+
+#if DEBUG
+    private static void LogResourceUsage() {
+        using var currentProcess = Process.GetCurrentProcess();
+        var workingSetMb = currentProcess.WorkingSet64 / (1024d * 1024d);
+        var privateMb = currentProcess.PrivateMemorySize64 / (1024d * 1024d);
+        var managedMb = GC.GetTotalMemory(forceFullCollection: false) / (1024d * 1024d);
+        var gdiHandles = GetGuiResources(currentProcess.Handle, 0);
+        var userHandles = GetGuiResources(currentProcess.Handle, 1);
+        Debug.WriteLine(
+            $"[ResourceUsage] WS={workingSetMb:F1}MB Private={privateMb:F1}MB Managed={managedMb:F1}MB GDI={gdiHandles} USER={userHandles}");
+    }
+#endif
+
+    [DllImport("user32.dll")]
+    private static extern int GetGuiResources(IntPtr hProcess, int uiFlags);
 }

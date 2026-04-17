@@ -11,7 +11,7 @@ public sealed class MediaSessionService : IMediaSessionService {
 
     public MediaSessionService(IMediaMetadataProvider provider) {
         _provider = provider;
-        _provider.MediaInfoChanged += info => Publish(info);
+        _provider.MediaInfoChanged += OnProviderMediaInfoChanged;
     }
 
     public async Task InitializeAsync() {
@@ -32,7 +32,12 @@ public sealed class MediaSessionService : IMediaSessionService {
         MediaInfoChanged?.Invoke(info);
     }
 
+    private void OnProviderMediaInfoChanged(MediaSessionInfo info) {
+        Publish(info);
+    }
+
     public void Dispose() {
+        _provider.MediaInfoChanged -= OnProviderMediaInfoChanged;
         _provider.Dispose();
     }
 }

@@ -15,7 +15,9 @@
   "shortcuts": [
     [
       "TaskbarMediaControlsPlus.exe",
-      "TaskbarMediaControls-Plus"
+      "TaskbarMediaControls-Plus",
+      "",
+      "TaskbarMediaControlsPlus.exe"
     ]
   ],
   "notes": [

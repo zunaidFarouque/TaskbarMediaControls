@@ -36,6 +36,7 @@ public sealed class SettingsForm : Form {
         Width = 660;
         Height = 470;
         MinimumSize = new Size(600, 420);
+        Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
 
         var scrollContainer = new Panel {
             Dock = DockStyle.Fill,

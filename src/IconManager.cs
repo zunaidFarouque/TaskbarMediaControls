@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Collections.Concurrent;
 using System.Drawing.Drawing2D;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -36,10 +37,9 @@ public static class IconManager {
     private static readonly string PlayPressedIcon_Light = "TaskbarMediaControls.Resources.play_pressed_light.ico";
     private static readonly string PausePressedIcon_Light = "TaskbarMediaControls.Resources.pause_pressed_light.ico";
     private static readonly string NextPressedIcon_Light = "TaskbarMediaControls.Resources.skip_pressed_light.ico";
+    private static readonly ConcurrentDictionary<(IconType Type, bool IsDarkMode), Icon> IconCache = new();
 
-    private static string GetIconPathForType(IconType type) {
-        bool isDarkMode = IsSystemDarkMode();
-
+    private static string GetIconPathForType(IconType type, bool isDarkMode) {
         switch (type) {
             case IconType.Previous:
                 return isDarkMode ? PrevIcon : PrevIcon_Light;
@@ -76,15 +76,36 @@ public static class IconManager {
     }
 
     public static Icon LoadIcon(IconType type) {
-        var assembly = Assembly.GetExecutingAssembly();
-        if (IsPressedType(type)) {
-            return CreatePressedVariant(LoadIcon(GetFallbackType(type)));
+        var isDarkMode = IsSystemDarkMode();
+        var template = IconCache.GetOrAdd((type, isDarkMode), _ => LoadTemplateIcon(type, isDarkMode));
+        return (Icon)template.Clone();
+    }
+
+    public static void ResetCache() {
+        foreach (var entry in IconCache.Values) {
+            entry.Dispose();
         }
 
-        using var stream = assembly.GetManifestResourceStream(GetIconPathForType(type));
+        IconCache.Clear();
+    }
+
+    private static Icon LoadTemplateIcon(IconType type, bool isDarkMode) {
+        var assembly = Assembly.GetExecutingAssembly();
+        if (IsPressedType(type)) {
+            var fallbackType = GetFallbackType(type);
+            var baseIcon = LoadTemplateIcon(fallbackType, isDarkMode);
+            try {
+                return CreatePressedVariant(baseIcon);
+            }
+            finally {
+                baseIcon.Dispose();
+            }
+        }
+
+        using var stream = assembly.GetManifestResourceStream(GetIconPathForType(type, isDarkMode));
         if (stream == null) {
             var fallbackType = GetFallbackType(type);
-            using var fallbackStream = assembly.GetManifestResourceStream(GetIconPathForType(fallbackType));
+            using var fallbackStream = assembly.GetManifestResourceStream(GetIconPathForType(fallbackType, isDarkMode));
             if (fallbackStream == null) {
                 throw new Exception($"Resource not found: {type}");
             }

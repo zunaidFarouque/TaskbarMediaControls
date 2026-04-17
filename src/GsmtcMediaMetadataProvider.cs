@@ -6,6 +6,11 @@ namespace TaskbarMediaControls;
 public sealed class GsmtcMediaMetadataProvider : IMediaMetadataProvider {
     private GlobalSystemMediaTransportControlsSessionManager? _manager;
     private GlobalSystemMediaTransportControlsSession? _currentSession;
+    private readonly SemaphoreSlim _refreshSignal = new(1, 1);
+    private int _refreshQueued;
+    private bool _isDisposed;
+    private string? _cachedProcessPathSourceId;
+    private string? _cachedProcessPath;
 
     public event Action<MediaSessionInfo>? MediaInfoChanged;
 
@@ -55,14 +60,14 @@ public sealed class GsmtcMediaMetadataProvider : IMediaMetadataProvider {
         }
     }
 
-    private async void OnCurrentSessionChanged(GlobalSystemMediaTransportControlsSessionManager sender, CurrentSessionChangedEventArgs args) {
+    private void OnCurrentSessionChanged(GlobalSystemMediaTransportControlsSessionManager sender, CurrentSessionChangedEventArgs args) {
         AttachSession(sender.GetCurrentSession());
-        Publish(await GetCurrentInfoAsync());
+        QueueRefreshPublish();
     }
 
-    private async void OnSessionsChanged(GlobalSystemMediaTransportControlsSessionManager sender, SessionsChangedEventArgs args) {
+    private void OnSessionsChanged(GlobalSystemMediaTransportControlsSessionManager sender, SessionsChangedEventArgs args) {
         AttachSession(sender.GetCurrentSession());
-        Publish(await GetCurrentInfoAsync());
+        QueueRefreshPublish();
     }
 
     private void AttachSession(GlobalSystemMediaTransportControlsSession? session) {
@@ -72,6 +77,8 @@ public sealed class GsmtcMediaMetadataProvider : IMediaMetadataProvider {
         }
 
         _currentSession = session;
+        _cachedProcessPathSourceId = null;
+        _cachedProcessPath = null;
 
         if (_currentSession != null) {
             _currentSession.MediaPropertiesChanged += OnMediaPropertiesChanged;
@@ -79,12 +86,12 @@ public sealed class GsmtcMediaMetadataProvider : IMediaMetadataProvider {
         }
     }
 
-    private async void OnMediaPropertiesChanged(GlobalSystemMediaTransportControlsSession sender, MediaPropertiesChangedEventArgs args) {
-        Publish(await GetCurrentInfoAsync());
+    private void OnMediaPropertiesChanged(GlobalSystemMediaTransportControlsSession sender, MediaPropertiesChangedEventArgs args) {
+        QueueRefreshPublish();
     }
 
-    private async void OnPlaybackInfoChanged(GlobalSystemMediaTransportControlsSession sender, PlaybackInfoChangedEventArgs args) {
-        Publish(await GetCurrentInfoAsync());
+    private void OnPlaybackInfoChanged(GlobalSystemMediaTransportControlsSession sender, PlaybackInfoChangedEventArgs args) {
+        QueueRefreshPublish();
     }
 
     private void Publish(MediaSessionInfo info) {
@@ -113,9 +120,41 @@ public sealed class GsmtcMediaMetadataProvider : IMediaMetadataProvider {
         return sourceAppUserModelId;
     }
 
-    private static string? ResolveProcessPath(string? sourceAppUserModelId) {
+    private void QueueRefreshPublish() {
+        if (_isDisposed) {
+            return;
+        }
+
+        Interlocked.Exchange(ref _refreshQueued, 1);
+        _ = DrainRefreshQueueAsync();
+    }
+
+    private async Task DrainRefreshQueueAsync() {
+        if (_isDisposed) {
+            return;
+        }
+
+        if (!await _refreshSignal.WaitAsync(0)) {
+            return;
+        }
+
+        try {
+            while (!_isDisposed && Interlocked.Exchange(ref _refreshQueued, 0) == 1) {
+                Publish(await GetCurrentInfoAsync());
+            }
+        }
+        finally {
+            _refreshSignal.Release();
+        }
+    }
+
+    private string? ResolveProcessPath(string? sourceAppUserModelId) {
         if (string.IsNullOrWhiteSpace(sourceAppUserModelId)) {
             return null;
+        }
+
+        if (string.Equals(_cachedProcessPathSourceId, sourceAppUserModelId, StringComparison.OrdinalIgnoreCase)) {
+            return _cachedProcessPath;
         }
 
         foreach (var process in Process.GetProcesses()) {
@@ -125,7 +164,9 @@ public sealed class GsmtcMediaMetadataProvider : IMediaMetadataProvider {
                 }
 
                 if (sourceAppUserModelId.Contains(process.ProcessName, StringComparison.OrdinalIgnoreCase)) {
-                    return process.MainModule?.FileName;
+                    _cachedProcessPathSourceId = sourceAppUserModelId;
+                    _cachedProcessPath = process.MainModule?.FileName;
+                    return _cachedProcessPath;
                 }
             }
             catch {
@@ -136,10 +177,13 @@ public sealed class GsmtcMediaMetadataProvider : IMediaMetadataProvider {
             }
         }
 
+        _cachedProcessPathSourceId = sourceAppUserModelId;
+        _cachedProcessPath = null;
         return null;
     }
 
     public void Dispose() {
+        _isDisposed = true;
         if (_manager != null) {
             _manager.CurrentSessionChanged -= OnCurrentSessionChanged;
             _manager.SessionsChanged -= OnSessionsChanged;
@@ -149,5 +193,7 @@ public sealed class GsmtcMediaMetadataProvider : IMediaMetadataProvider {
             _currentSession.MediaPropertiesChanged -= OnMediaPropertiesChanged;
             _currentSession.PlaybackInfoChanged -= OnPlaybackInfoChanged;
         }
+
+        _refreshSignal.Dispose();
     }
 }
