@@ -36,7 +36,7 @@ Detailed technical change notes are in [PLUS_CHANGES.md](./PLUS_CHANGES.md).
 
 - Tray media controls: Previous, Play/Pause, Next
 - Single-click and double-click action customization per icon
-- Optional launch on Windows startup
+- Optional launch on Windows startup (Startup-folder shortcut)
 - Fallback media application launch flow with player-type handling
 - Hover metadata display (optional)
 
@@ -77,9 +77,18 @@ scoop update TaskbarMediaControls-Plus
 An installer build is also available for users who prefer setup/uninstall and normal Start menu integration.
 Portable remains the recommended/default option.
 
-## Shortcut management (portable)
+## Startup behavior (portable)
 
-Use `scripts/shortcut-manager.bat` to toggle shortcuts interactively.
+Use `Settings -> Launch on Startup` in the tray app to manage startup.
+When enabled, the app creates a shortcut in the Windows Startup folder:
+`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\TaskbarMediaControls-plus.lnk`.
+
+If you move the portable folder/executable, re-enable the setting once so the
+startup shortcut target is updated to the new location.
+
+## Manual shortcut helper (optional)
+
+`scripts/shortcut-manager.bat` is still available as a manual helper to toggle shortcuts interactively.
 
 - `1` toggles Desktop shortcut
 - `2` toggles Start Menu shortcut

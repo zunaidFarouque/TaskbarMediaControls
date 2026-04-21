@@ -1,6 +1,6 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.InteropServices;
-using Microsoft.Win32;
 
 namespace TaskbarMediaControls;
 
@@ -335,15 +335,27 @@ public sealed class ProcessLauncher : IProcessLauncher {
 }
 
 public sealed class StartupManager : IStartupManager {
-    private const string RegistryRunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string RegistryApprovedKey =
-        @"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
-    private const string AppName = "TaskbarMediaControls-plus";
+    private const string StartupShortcutFileName = "TaskbarMediaControls-plus.lnk";
+    private readonly string _startupFolderPath;
+    private readonly string _startupShortcutPath;
+    private readonly string _currentExecutablePath;
+
+    public StartupManager()
+        : this(
+            Environment.GetFolderPath(Environment.SpecialFolder.Startup),
+            Path.GetFullPath(Application.ExecutablePath)
+        ) {
+    }
+
+    public StartupManager(string startupFolderPath, string currentExecutablePath) {
+        _startupFolderPath = startupFolderPath;
+        _startupShortcutPath = Path.Combine(_startupFolderPath, StartupShortcutFileName);
+        _currentExecutablePath = Path.GetFullPath(currentExecutablePath);
+    }
 
     public bool StartupEntryExists() {
         try {
-            using var runKey = Registry.CurrentUser.OpenSubKey(RegistryRunKey);
-            return runKey?.GetValue(AppName) != null;
+            return File.Exists(_startupShortcutPath);
         }
         catch {
             return false;
@@ -352,19 +364,20 @@ public sealed class StartupManager : IStartupManager {
 
     public bool IsStartupEnabled() {
         try {
-            using var runKey = Registry.CurrentUser.OpenSubKey(RegistryRunKey);
-            if (runKey == null) {
+            if (!File.Exists(_startupShortcutPath)) {
                 return false;
             }
 
-            var value = runKey.GetValue(AppName)?.ToString();
-            if (string.IsNullOrWhiteSpace(value)) {
+            var shortcutTarget = TryGetShortcutTargetPath(_startupShortcutPath);
+            if (string.IsNullOrWhiteSpace(shortcutTarget)) {
                 return false;
             }
 
-            value = value.Trim('"');
-            string exePath = Path.GetFullPath(Application.ExecutablePath);
-            return string.Equals(value, exePath, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(
+                Path.GetFullPath(shortcutTarget),
+                _currentExecutablePath,
+                StringComparison.OrdinalIgnoreCase
+            );
         }
         catch {
             return false;
@@ -372,26 +385,83 @@ public sealed class StartupManager : IStartupManager {
     }
 
     public void SetStartup(bool enable) {
-        string exePath = Path.GetFullPath(Application.ExecutablePath);
-        string value = $"\"{exePath}\"";
-
-        using var runKey = Registry.CurrentUser.OpenSubKey(RegistryRunKey, true)
-                           ?? Registry.CurrentUser.CreateSubKey(RegistryRunKey);
         if (enable) {
-            runKey.SetValue(AppName, value, RegistryValueKind.String);
+            Directory.CreateDirectory(_startupFolderPath);
+            CreateOrUpdateShortcut(
+                _startupShortcutPath,
+                _currentExecutablePath,
+                Path.GetDirectoryName(_currentExecutablePath) ?? AppContext.BaseDirectory
+            );
         }
         else {
-            runKey.DeleteValue(AppName, false);
+            if (File.Exists(_startupShortcutPath)) {
+                File.Delete(_startupShortcutPath);
+            }
+        }
+    }
+
+    private static void CreateOrUpdateShortcut(string shortcutPath, string targetPath, string workingDirectory) {
+        var shellType = Type.GetTypeFromProgID("WScript.Shell", throwOnError: true)
+                        ?? throw new InvalidOperationException("WScript.Shell is unavailable.");
+        var shell = Activator.CreateInstance(shellType)
+                    ?? throw new InvalidOperationException("Failed to create WScript.Shell instance.");
+
+        try {
+            var shortcut = shellType.InvokeMember(
+                "CreateShortcut",
+                BindingFlags.InvokeMethod,
+                binder: null,
+                target: shell,
+                args: [shortcutPath]
+            );
+
+            if (shortcut == null) {
+                throw new InvalidOperationException("Failed to create startup shortcut.");
+            }
+
+            var shortcutType = shortcut.GetType();
+            shortcutType.InvokeMember("TargetPath", BindingFlags.SetProperty, null, shortcut, [targetPath]);
+            shortcutType.InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, shortcut, [workingDirectory]);
+            shortcutType.InvokeMember("Description", BindingFlags.SetProperty, null, shortcut,
+                ["TaskbarMediaControls-plus startup"]);
+            shortcutType.InvokeMember("Save", BindingFlags.InvokeMethod, null, shortcut, args: null);
+        }
+        finally {
+            Marshal.FinalReleaseComObject(shell);
+        }
+    }
+
+    private static string? TryGetShortcutTargetPath(string shortcutPath) {
+        var shellType = Type.GetTypeFromProgID("WScript.Shell", throwOnError: false);
+        if (shellType == null) {
+            return null;
         }
 
-        using var approvedKey = Registry.CurrentUser.OpenSubKey(RegistryApprovedKey, true)
-                                ?? Registry.CurrentUser.CreateSubKey(RegistryApprovedKey);
-        if (enable) {
-            byte[] enabledValue = { 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-            approvedKey.SetValue(AppName, enabledValue, RegistryValueKind.Binary);
+        var shell = Activator.CreateInstance(shellType);
+        if (shell == null) {
+            return null;
         }
-        else {
-            approvedKey.DeleteValue(AppName, false);
+
+        try {
+            var shortcut = shellType.InvokeMember(
+                "CreateShortcut",
+                BindingFlags.InvokeMethod,
+                binder: null,
+                target: shell,
+                args: [shortcutPath]
+            );
+            if (shortcut == null) {
+                return null;
+            }
+
+            var shortcutType = shortcut.GetType();
+            return shortcutType.InvokeMember("TargetPath", BindingFlags.GetProperty, null, shortcut, args: null)?.ToString();
+        }
+        catch {
+            return null;
+        }
+        finally {
+            Marshal.FinalReleaseComObject(shell);
         }
     }
 }
