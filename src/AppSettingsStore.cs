@@ -13,8 +13,14 @@ public sealed class AppSettingsStore : IAppSettingsStore {
 
     public AppSettingsStore() {
         var exeDirectory = Path.GetDirectoryName(Application.ExecutablePath) ?? AppContext.BaseDirectory;
-        Directory.CreateDirectory(exeDirectory);
-        _settingsPath = Path.Combine(exeDirectory, "settings.json");
+        _settingsPath = ResolveDefaultSettingsPath(exeDirectory);
+        var targetDirectory = Path.GetDirectoryName(_settingsPath);
+        if (!string.IsNullOrWhiteSpace(targetDirectory)) {
+            Directory.CreateDirectory(targetDirectory);
+        }
+
+        var legacySettingsPath = Path.Combine(exeDirectory, "settings.json");
+        MigrateLegacySettingsIfNeeded(_settingsPath, legacySettingsPath);
     }
 
     public AppSettingsStore(string settingsPath) {
@@ -24,6 +30,61 @@ public sealed class AppSettingsStore : IAppSettingsStore {
         }
 
         _settingsPath = settingsPath;
+    }
+
+    internal static string ResolveDefaultSettingsPath(string executableDirectory) {
+        if (IsScoopInstallPath(executableDirectory)) {
+            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var appSettingsDirectory = Path.Combine(appDataPath, "TaskbarMediaControls-plus");
+            return Path.Combine(appSettingsDirectory, "settings.json");
+        }
+
+        return Path.Combine(executableDirectory, "settings.json");
+    }
+
+    internal static bool IsScoopInstallPath(string path) {
+        if (string.IsNullOrWhiteSpace(path)) {
+            return false;
+        }
+
+        var normalizedPath = path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+        var segments = normalizedPath.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 0) {
+            return false;
+        }
+
+        var hasScoopSegment = segments.Any(segment => string.Equals(segment, "scoop", StringComparison.OrdinalIgnoreCase));
+        var hasAppsSegment = segments.Any(segment => string.Equals(segment, "apps", StringComparison.OrdinalIgnoreCase));
+        return hasScoopSegment && hasAppsSegment;
+    }
+
+    internal static void MigrateLegacySettingsIfNeeded(string targetSettingsPath, string legacySettingsPath) {
+        if (string.IsNullOrWhiteSpace(targetSettingsPath) || string.IsNullOrWhiteSpace(legacySettingsPath)) {
+            return;
+        }
+
+        if (string.Equals(
+                Path.GetFullPath(targetSettingsPath),
+                Path.GetFullPath(legacySettingsPath),
+                StringComparison.OrdinalIgnoreCase)) {
+            return;
+        }
+
+        if (File.Exists(targetSettingsPath) || !File.Exists(legacySettingsPath)) {
+            return;
+        }
+
+        try {
+            var targetDirectory = Path.GetDirectoryName(targetSettingsPath);
+            if (!string.IsNullOrWhiteSpace(targetDirectory)) {
+                Directory.CreateDirectory(targetDirectory);
+            }
+
+            File.Copy(legacySettingsPath, targetSettingsPath);
+        }
+        catch {
+            // Ignore migration failures and continue with defaults/load behavior.
+        }
     }
 
     public AppSettings Load() {

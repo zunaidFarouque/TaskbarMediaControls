@@ -59,4 +59,6 @@ scoop install TaskbarMediaControls-Plus
 
 - Launch app from Scoop install.
 - Confirm tray icons appear.
-- Confirm `settings.json` is created/updated in app folder.
+- Confirm Scoop run creates/updates `%APPDATA%\TaskbarMediaControls-plus\settings.json`.
+- If upgrading from older versions, confirm legacy app-folder `settings.json` is migrated on first run.
+- Confirm portable ZIP run still creates/updates `settings.json` beside the executable.

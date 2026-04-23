@@ -4,6 +4,59 @@ namespace TaskbarMediaControls.Tests;
 
 public class AppSettingsStoreIntegrationTests {
     [Fact]
+    public void ResolveDefaultSettingsPath_WhenPortablePath_ShouldUseExecutableDirectory() {
+        using var temp = new TempDirectory();
+        var exeDirectory = temp.Path;
+
+        var resolvedPath = InvokeResolveDefaultSettingsPath(exeDirectory);
+
+        Assert.Equal(Path.Combine(exeDirectory, "settings.json"), resolvedPath);
+    }
+
+    [Fact]
+    public void ResolveDefaultSettingsPath_WhenScoopPath_ShouldUseRoamingAppData() {
+        var scoopPath = Path.Combine("C:\\", "Users", "someone", "scoop", "apps", "TaskbarMediaControls-Plus", "current");
+        var expectedPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "TaskbarMediaControls-plus",
+            "settings.json"
+        );
+
+        var resolvedPath = InvokeResolveDefaultSettingsPath(scoopPath);
+
+        Assert.Equal(expectedPath, resolvedPath);
+    }
+
+    [Fact]
+    public void MigrateLegacySettingsIfNeeded_WhenDestinationMissing_ShouldCopyLegacyFile() {
+        using var temp = new TempDirectory();
+        var legacyPath = Path.Combine(temp.Path, "legacy", "settings.json");
+        var targetPath = Path.Combine(temp.Path, "target", "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
+        File.WriteAllText(legacyPath, """{"ShowHoverTrackInfo":false}""");
+
+        InvokeMigrateLegacySettingsIfNeeded(targetPath, legacyPath);
+
+        Assert.True(File.Exists(targetPath));
+        Assert.Equal(File.ReadAllText(legacyPath), File.ReadAllText(targetPath));
+    }
+
+    [Fact]
+    public void MigrateLegacySettingsIfNeeded_WhenDestinationExists_ShouldNotOverwrite() {
+        using var temp = new TempDirectory();
+        var legacyPath = Path.Combine(temp.Path, "legacy", "settings.json");
+        var targetPath = Path.Combine(temp.Path, "target", "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        File.WriteAllText(legacyPath, """{"ShowHoverTrackInfo":false}""");
+        File.WriteAllText(targetPath, """{"ShowHoverTrackInfo":true}""");
+
+        InvokeMigrateLegacySettingsIfNeeded(targetPath, legacyPath);
+
+        Assert.Equal("""{"ShowHoverTrackInfo":true}""", File.ReadAllText(targetPath));
+    }
+
+    [Fact]
     public void Load_WhenFileMissing_ShouldCreateDefaults() {
         using var temp = new TempDirectory();
         var path = Path.Combine(temp.Path, "settings.json");
@@ -223,5 +276,25 @@ public class AppSettingsStoreIntegrationTests {
                 // Ignore cleanup failures.
             }
         }
+    }
+
+    private static string InvokeResolveDefaultSettingsPath(string executableDirectory) {
+        var method = typeof(AppSettingsStore).GetMethod(
+            "ResolveDefaultSettingsPath",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public
+        );
+        Assert.NotNull(method);
+        var result = method!.Invoke(null, [executableDirectory]);
+        var value = Assert.IsType<string>(result);
+        return value;
+    }
+
+    private static void InvokeMigrateLegacySettingsIfNeeded(string targetSettingsPath, string legacySettingsPath) {
+        var method = typeof(AppSettingsStore).GetMethod(
+            "MigrateLegacySettingsIfNeeded",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public
+        );
+        Assert.NotNull(method);
+        method!.Invoke(null, [targetSettingsPath, legacySettingsPath]);
     }
 }

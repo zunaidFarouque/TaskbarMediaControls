@@ -72,6 +72,12 @@ scoop update
 scoop update TaskbarMediaControls-Plus
 ```
 
+For Scoop installs, settings are stored in:
+`%APPDATA%\TaskbarMediaControls-plus\settings.json`
+
+On first run after upgrading to this behavior, the app migrates an existing legacy
+`settings.json` from the executable directory into `%APPDATA%` when needed.
+
 ### 3) Optional installer
 
 An installer build is also available for users who prefer setup/uninstall and normal Start menu integration.
